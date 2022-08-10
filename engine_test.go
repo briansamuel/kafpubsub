@@ -21,18 +21,6 @@ func TestStartKafkaClient(t *testing.T) {
 	_ = kafps.Publish(context.Background(), "topic-2", nil)
 }
 
-func TestStartKafkaClientMain() {
-
-	var brokerURL = "0.0.0.0:9092"
-	brokers := strings.Split(brokerURL, ",")
-	client := NewClient(brokers)
-	kafps := NewKafkaPubSub(client)
-	appCtx := NewAppContext(kafps)
-	NewSubscriber(appCtx).Start()
-	_ = kafps.Publish(context.Background(), "topic-1", nil)
-	_ = kafps.Publish(context.Background(), "topic-2", nil)
-}
-
 func (sb *subscriber) Start() error {
 
 	sb.Setup()
