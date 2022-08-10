@@ -49,8 +49,8 @@ func (sb *subscriber) Setup() {
 
 }
 
-func Topic1HandleFunction(appCtx AppContext) consumerJob {
-	return consumerJob{
+func Topic1HandleFunction(appCtx AppContext) ConsumerJob {
+	return ConsumerJob{
 		Title: "Topic1HandleFunction",
 		Hdl: func(ctx context.Context, msg *Message) error {
 
@@ -60,8 +60,8 @@ func Topic1HandleFunction(appCtx AppContext) consumerJob {
 	}
 }
 
-func Topic2HandleFunction(appCtx AppContext) consumerJob {
-	return consumerJob{
+func Topic2HandleFunction(appCtx AppContext) ConsumerJob {
+	return ConsumerJob{
 		Title: "Topic2HandleFunction",
 		Hdl: func(ctx context.Context, msg *Message) error {
 
