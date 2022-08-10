@@ -3,29 +3,40 @@ package kafpubsub
 import (
 	"context"
 	"fmt"
-	"strings"
-
 	"log"
+	"strings"
 
 	"testing"
 )
 
 func TestStartKafkaClient(t *testing.T) {
-	brokers := strings.Split("0.0.0.0:9092", ",")
+
+	var brokerURL = "0.0.0.0:9092"
+	brokers := strings.Split(brokerURL, ",")
 	client := NewClient(brokers)
-	appCtx := NewAppContext(client)
+	kafps := NewKafkaPubSub(client)
+	appCtx := NewAppContext(kafps)
 	NewSubscriber(appCtx).Start()
+	_ = kafps.Publish(context.Background(), "topic-1", nil)
+	_ = kafps.Publish(context.Background(), "topic-2", nil)
 }
 
-func (sb *subscriber) Start() {
+func TestStartKafkaClientMain() {
 
-	err := sb.InitConsumer()
-	if err != nil {
-		log.Print(err)
+	var brokerURL = "0.0.0.0:9092"
+	brokers := strings.Split(brokerURL, ",")
+	client := NewClient(brokers)
+	kafps := NewKafkaPubSub(client)
+	appCtx := NewAppContext(kafps)
+	NewSubscriber(appCtx).Start()
+	_ = kafps.Publish(context.Background(), "topic-1", nil)
+	_ = kafps.Publish(context.Background(), "topic-2", nil)
+}
 
-	}
+func (sb *subscriber) Start() error {
+
 	sb.Setup()
-
+	return nil
 }
 
 func (sb *subscriber) Setup() {
@@ -43,6 +54,11 @@ func (sb *subscriber) Setup() {
 		Topic2HandleFunction(sb.appCtx),
 	)
 
+	err := sb.InitialClient()
+	if err != nil {
+		log.Print(err)
+	}
+
 }
 
 func Topic1HandleFunction(appCtx AppContext) consumerJob {
@@ -50,7 +66,7 @@ func Topic1HandleFunction(appCtx AppContext) consumerJob {
 		Title: "Topic1HandleFunction",
 		Hdl: func(ctx context.Context, msg *Message) error {
 
-			fmt.Sprintf("Message %s of topic %s",msg.Data(), msg.Chanel())
+			fmt.Sprintf("Message %s of topic %s", msg.Data(), msg.Chanel())
 			return nil
 		},
 	}
@@ -61,14 +77,14 @@ func Topic2HandleFunction(appCtx AppContext) consumerJob {
 		Title: "Topic2HandleFunction",
 		Hdl: func(ctx context.Context, msg *Message) error {
 
-			fmt.Sprintf("Message %s of topic %s",msg.Data(), msg.Chanel())
+			fmt.Sprintf("Message %s of topic %s", msg.Data(), msg.Chanel())
 			return nil
 		},
 	}
 }
 
 type appCtx struct {
-	kafkaPs        PubSub
+	kafkaPs PubSub
 }
 
 func NewAppContext(kafkaPs PubSub) *appCtx {

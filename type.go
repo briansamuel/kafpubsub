@@ -1,6 +1,5 @@
 package kafpubsub
 
-
 import (
 	"fmt"
 	"log"
@@ -59,7 +58,7 @@ func NewClient(brokerURLs []string) *Client {
 
 }
 
-type PubSub interface {
+type IClient interface {
 	InitConsumerGroup(consumerGroup string, brokerURLs ...string) error
 	// InitConsumer depredicated
 	InitConsumer() error
@@ -114,15 +113,6 @@ func (evt *Message) SetChanel(chanel string) {
 
 func (evt *Message) Data() interface{} {
 	return evt.Body
-}
-
-
-// ConsumerGroupHandle represents a Sarama consumer group consumer
-type ConsumerGroupHandle struct {
-	wg         *sync.WaitGroup
-	lock       chan bool
-	bufMessage chan Message
-	autoCommit map[string]bool
 }
 
 func ToInt32(in *int32) int32 {

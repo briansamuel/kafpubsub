@@ -6,15 +6,9 @@ import (
 	"log"
 )
 
-type User struct {
-	Name string
-	Age  int
-}
-
 type AppContext interface {
 	GetKafka() PubSub
 }
-
 
 type consumerJob struct {
 	Title string
@@ -23,6 +17,7 @@ type consumerJob struct {
 
 type subscriber struct {
 	appCtx AppContext
+	topics []string
 }
 
 func NewSubscriber(appCtx AppContext) *subscriber {
@@ -31,10 +26,10 @@ func NewSubscriber(appCtx AppContext) *subscriber {
 	}
 }
 
-func (sb *subscriber) InitConsumerGroup(group string) error {
+func (sb *subscriber) InitialClient() error {
 
 	kafka := sb.appCtx.GetKafka()
-	err := kafka.InitConsumerGroup(group)
+	err := kafka.InitialClient(sb.topics...)
 	if err != nil {
 		log.Print(err)
 		return err
@@ -42,48 +37,6 @@ func (sb *subscriber) InitConsumerGroup(group string) error {
 
 	return nil
 }
-
-func (sb *subscriber) InitConsumer() error {
-
-	kafka := sb.appCtx.GetKafka()
-
-	err := kafka.InitConsumer()
-	if err != nil {
-		log.Print(err)
-		return err
-	}
-
-	return nil
-}
-
-//func (sb *subscriber) Start() error {
-//
-//	//// Follow topic in queue
-//	//kafka := sb.appCtx.GetKafka()
-//	//
-//	//err := sb.InitConsumerGroup("CG-0")
-//	//if err != nil {
-//	//	log.Print(err)
-//	//
-//	//}
-//	//
-//	//buff := make(chan Message, 5)
-//	//go func() {
-//	//
-//	//	errSub := kafka.Subscribe([]*Topic{{
-//	//		Name: common.TopicUserLikeRestaurant, AutoCommit: true}, {
-//	//		Name: common.TopicUserDislikeRestaurant, AutoCommit: true}}, 1, buff)
-//	//	log.Print(errSub)
-//	//}()
-//	err := sb.InitConsumer()
-//	if err != nil {
-//		log.Print(err)
-//
-//	}
-//	sb.Setup()
-//
-//	return nil
-//}
 
 type GroupJob interface {
 	Run(ctx context.Context) error
@@ -91,11 +44,9 @@ type GroupJob interface {
 
 func (sb *subscriber) startSubTopic(topic string, isConcurrency bool, consumerJobs ...consumerJob) {
 
-	kafka := sb.appCtx.GetKafka()
-
+	sb.topics = append(sb.topics, topic)
+	c, _ := sb.appCtx.GetKafka().Subscribe(context.Background(), topic)
 	////kafka := sb.appCtx.GetKafka()
-
-	buff := make(chan Message, 5)
 
 	for _, item := range consumerJobs {
 		log.Println("Setup Kafka subscriber for:", item.Title)
@@ -110,12 +61,12 @@ func (sb *subscriber) startSubTopic(topic string, isConcurrency bool, consumerJo
 
 	go func() {
 		for {
-			d := <-buff
-			log.Println("Kafka Message Dequeue:", d.Topic)
+			msg := <-c
+			log.Println("Kafka Message Dequeue:", msg.Topic)
 			jobHdlArr := make([]asyncjob.Job, len(consumerJobs))
 
 			for i := range consumerJobs {
-				jobHdl := getJobHandler(&consumerJobs[i], &d)
+				jobHdl := getJobHandler(&consumerJobs[i], msg)
 
 				jobHdlArr[i] = asyncjob.NewJob(jobHdl, asyncjob.WithName(consumerJobs[i].Title))
 
@@ -129,18 +80,4 @@ func (sb *subscriber) startSubTopic(topic string, isConcurrency bool, consumerJo
 		}
 	}()
 
-	go func() {
-		log.Printf("Kafka Subscribe Topic %s", topic)
-		errSub := kafka.OnScanMessages([]string{topic}, buff)
-		log.Print(errSub)
-	}()
-
-	//go func() {
-	//	log.Printf("Kafka Subscribe Topic %s", topic)
-	//	errSub := kafka.Subscribe([]*Topic{{
-	//		Name: topic, AutoCommit: true}}, 1, buff)
-	//	log.Print(errSub)
-	//}()
-
 }
-

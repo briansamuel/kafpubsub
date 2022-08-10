@@ -11,8 +11,6 @@ import (
 	"time"
 )
 
-
-
 func newConsumerGroup(consumerGroup string, reconnect chan bool, brokerURLs ...string) (sarama.ConsumerGroup, error) {
 	config := sarama.NewConfig()
 	// config.ClientID = clientid
@@ -91,13 +89,13 @@ func (ps *Client) createTopic(topic string) error {
 	return err
 }
 
-func (ps *Client) InitConsumerGroup(consumerGroup string, brokerURLs ...string) error {
-	client, err := newConsumerGroup(consumerGroup, ps.reconnect, brokerURLs...)
+func (ps *Client) InitConsumerGroup(consumerGroup string) error {
+	client, err := newConsumerGroup(consumerGroup, ps.reconnect, ps.brokerURLs...)
 	if err != nil {
 		return err
 	}
 	ps.group = client
-	ps.brokerURLs = brokerURLs
+
 	ps.consumerGroup = consumerGroup
 	// ps.reconnect = make(chan bool)
 	return nil
@@ -168,7 +166,7 @@ func (ps *Client) ListTopics(brokers ...string) ([]string, error) {
 	}()
 	return cluster.Topics()
 }
-func (ps *Client) OnAsyncSubscribe(topics []*Topic, numberPuller int, buf chan Message) error {
+func (ps *Client) OnAsyncSubscribe(topics []*Topic, numberPuller int, buf chan *Message) error {
 	// ps.onAsyncSubscribe(topics, numberPuller, buf)
 	var err error
 	for {
@@ -178,17 +176,18 @@ func (ps *Client) OnAsyncSubscribe(topics []*Topic, numberPuller int, buf chan M
 		}
 		time.Sleep(10 * time.Second)
 		log.Print("try reconnecting ....")
-		ps.InitConsumerGroup(ps.consumerGroup, ps.brokerURLs...)
+		ps.InitConsumerGroup(ps.consumerGroup)
 	}
 	return err
 }
 
 // onAsyncSubscribe listener
-func (ps *Client) onAsyncSubscribe(topics []*Topic, numberPuller int, buf chan Message) error {
+
+func (ps *Client) onAsyncSubscribe(topics []*Topic, numberPuller int, buf chan *Message) error {
 	if len(topics) == 0 {
 		return nil
 	}
-	txtTopics := []string{}
+	var txtTopics []string
 	autoCommit := map[string]bool{}
 	allTopics, err := ps.ListTopics(ps.brokerURLs...)
 	if err != nil {
@@ -215,11 +214,21 @@ func (ps *Client) onAsyncSubscribe(topics []*Topic, numberPuller int, buf chan M
 			log.Print("don't forget commit topic: ", topic.Name)
 		}
 	}
+
+	//for _, topic := range allTopics {
+	//	if strings.Contains(topic, "__consumer_offsets") {
+	//		continue
+	//	}
+	//	txtTopics = append(txtTopics, topic)
+	//
+	//}
 	consumer := &ConsumerGroupHandle{
 		wg:         &sync.WaitGroup{},
 		bufMessage: buf,
 		lock:       make(chan bool),
 		autoCommit: autoCommit,
+		mapChanel:  make(map[string][]chan *Message),
+		locker:     new(sync.RWMutex),
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -278,6 +287,36 @@ func messageHandler(m *sarama.ConsumerMessage, bufMessage chan Message) error {
 	return nil
 }
 
+func (ps *Client) Close() error {
+	if ps.consumer != nil {
+		if err := ps.consumer.Close(); err != nil {
+			return err
+		}
+	}
+	// var err error
+	// ps.mProducer.Range(func(k interface{}, sp interface{}) bool {
+	// 	if sp == nil {
+	// 		return true
+	// 	}
+	// 	err = sp.(sarama.SyncProducer).Close()
+	// 	if err != nil {
+	// 		log.Print("close error: ", err.Error())
+	// 	}
+	// 	return true
+	// })
+	return nil
+}
+
+// ConsumerGroupHandle represents a Sarama consumer group consumer
+type ConsumerGroupHandle struct {
+	wg         *sync.WaitGroup
+	lock       chan bool
+	bufMessage chan *Message
+	mapChanel  map[string][]chan *Message
+	locker     *sync.RWMutex
+	autoCommit map[string]bool
+}
+
 // Setup is run at the beginning of a new session, before ConsumeClaim
 func (consumer *ConsumerGroupHandle) Setup(ss sarama.ConsumerGroupSession) error {
 	// Mark the consumer as ready
@@ -305,7 +344,7 @@ func (consumer *ConsumerGroupHandle) ConsumeClaim(session sarama.ConsumerGroupSe
 			// Returning nil will automatically send a FIN command to NSQ to mark the message as processed.
 			return errors.New("message error")
 		}
-		msg := Message{
+		msg := &Message{
 			Topic:     m.Topic,
 			Body:      m.Value,
 			Offset:    m.Offset,
@@ -331,26 +370,16 @@ func (consumer *ConsumerGroupHandle) ConsumeClaim(session sarama.ConsumerGroupSe
 			session.MarkMessage(m, "")
 		}
 		consumer.bufMessage <- msg
-	}
-	return nil
-}
+		log.Println("Message dequeue", msg.String())
 
-func (ps *Client) Close() error {
-	if ps.consumer != nil {
-		if err := ps.consumer.Close(); err != nil {
-			return err
+		if subs, ok := consumer.mapChanel[msg.Chanel()]; ok {
+			for i := range subs {
+				go func(c chan *Message) {
+					//defer common.Recover()
+					c <- msg
+				}(subs[i])
+			}
 		}
 	}
-	// var err error
-	// ps.mProducer.Range(func(k interface{}, sp interface{}) bool {
-	// 	if sp == nil {
-	// 		return true
-	// 	}
-	// 	err = sp.(sarama.SyncProducer).Close()
-	// 	if err != nil {
-	// 		log.Print("close error: ", err.Error())
-	// 	}
-	// 	return true
-	// })
 	return nil
 }
