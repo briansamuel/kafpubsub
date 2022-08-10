@@ -1,4 +1,4 @@
-module kafpubsub
+module github.com/briansamuel/kafpubsub
 
 go 1.17
 
