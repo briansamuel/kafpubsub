@@ -5,8 +5,6 @@ import (
 	"fmt"
 	_ "github.com/briansamuel/asynjob"
 	kafka "github.com/briansamuel/kafpubsub"
-	"github.com/briansamuel/kafpubsub/kafkapb"
-
 	"time"
 )
 
@@ -14,7 +12,7 @@ func main() {
 
 	var brokerURL = "0.0.0.0:9092"
 
-	kafps := kafkapb.NewKafkaPubSub(brokerURL)
+	kafps := kafka.NewKafkaPubSub(brokerURL)
 	appCtx := NewAppContext(kafps)
 	var subcriber kafka.Subscriber
 	subcriber = kafka.NewSubscriber(appCtx)

@@ -3,7 +3,7 @@ package kafka
 import (
 	"context"
 	"fmt"
-	"github.com/briansamuel/kafpubsub/kafkapb"
+
 	"testing"
 )
 
@@ -11,7 +11,7 @@ func TestStartKafkaClient(t *testing.T) {
 
 	var brokerURL = "0.0.0.0:9092"
 
-	kafps := kafkapb.NewKafkaPubSub(brokerURL)
+	kafps := NewKafkaPubSub(brokerURL)
 	appCtx := NewAppContext(kafps)
 	var subcriber Subscriber
 	subcriber = NewSubscriber(appCtx)
