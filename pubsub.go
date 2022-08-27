@@ -1,4 +1,4 @@
-package kafpubsub
+package kafka
 
 import (
 	"context"
@@ -12,4 +12,10 @@ type PubSub interface {
 	//OnScanMessages(topics []string, bufMessage chan Message) error
 	//InitConsumerGroup(consumerGroup string) error
 	//InitConsumer(brokerURLs ...string) error
+}
+
+type Subscriber interface {
+	Start()
+	StartSubTopic(topic string, isConcurrency bool, consumerJobs ...ConsumerJob)
+	GetAppContext() AppContext
 }

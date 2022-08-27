@@ -1,68 +1,34 @@
-package kafpubsub
+package kafka
 
 import (
 	"context"
 	"fmt"
-	"log"
-	"strings"
-
+	"github.com/briansamuel/kafpubsub/kafkapb"
 	"testing"
 )
 
 func TestStartKafkaClient(t *testing.T) {
 
 	var brokerURL = "0.0.0.0:9092"
-	brokers := strings.Split(brokerURL, ",")
-	client := NewClient(brokers)
-	kafps := NewKafkaPubSub(client)
+
+	kafps := kafkapb.NewKafkaPubSub(brokerURL)
 	appCtx := NewAppContext(kafps)
-	NewSubscriber(appCtx).Start()
-	_ = kafps.Publish(context.Background(), "topic-1", nil)
-	_ = kafps.Publish(context.Background(), "topic-2", nil)
-}
+	var subcriber Subscriber
+	subcriber = NewSubscriber(appCtx)
 
-func (sb *subscriber) Start() error {
-
-	sb.Setup()
-	return nil
-}
-
-func (sb *subscriber) Setup() {
-
-	sb.startSubTopic(
+	subcriber.StartSubTopic(
 		"topic-1",
 		true,
-		Topic1HandleFunction(sb.appCtx),
+		Topic1HandleFunction(appCtx),
 	)
-
-	// Follow topic in queue
-	sb.startSubTopic(
-		"topic-2",
-		true,
-		Topic2HandleFunction(sb.appCtx),
-	)
-
-	err := sb.InitialClient()
-	if err != nil {
-		log.Print(err)
-	}
-
+	subcriber.Start()
+	_ = kafps.Publish(context.Background(), "topic-1", nil)
+	_ = kafps.Publish(context.Background(), "topic-2", nil)
 }
 
 func Topic1HandleFunction(appCtx AppContext) ConsumerJob {
 	return ConsumerJob{
 		Title: "Topic1HandleFunction",
-		Hdl: func(ctx context.Context, msg *Message) error {
-
-			fmt.Sprintf("Message %s of topic %s", msg.Data(), msg.Chanel())
-			return nil
-		},
-	}
-}
-
-func Topic2HandleFunction(appCtx AppContext) ConsumerJob {
-	return ConsumerJob{
-		Title: "Topic2HandleFunction",
 		Hdl: func(ctx context.Context, msg *Message) error {
 
 			fmt.Sprintf("Message %s of topic %s", msg.Data(), msg.Chanel())

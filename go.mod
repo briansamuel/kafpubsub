@@ -5,6 +5,7 @@ go 1.18
 require (
 	github.com/Shopify/sarama v1.35.0
 	github.com/briansamuel/asynjob v1.0.0
+	github.com/sirupsen/logrus v1.8.1
 )
 
 require (
@@ -26,4 +27,5 @@ require (
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
 	golang.org/x/crypto v0.0.0-20220214200702-86341886e292 // indirect
 	golang.org/x/net v0.0.0-20220708220712-1185a9018129 // indirect
+	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
 )
