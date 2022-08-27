@@ -15,7 +15,7 @@ type PubSub interface {
 }
 
 type Subscriber interface {
-	Start()
+	Start() error
 	StartSubTopic(topic string, isConcurrency bool, consumerJobs ...ConsumerJob)
 	GetAppContext() AppContext
 }

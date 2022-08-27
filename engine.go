@@ -37,14 +37,15 @@ func (sb *subscriber) GetAppContext() AppContext {
 	return sb.appCtx
 }
 
-func (sb *subscriber) Start() {
+func (sb *subscriber) Start() error {
 
 	kafka := sb.appCtx.GetKafka()
 	err := kafka.InitialClient(sb.topics...)
 	if err != nil {
 		log.Print(err)
-		return
+		return err
 	}
+	return nil
 }
 
 type GroupJob interface {
